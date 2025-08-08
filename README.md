@@ -44,8 +44,8 @@ SM3算法是中国国家密码管理局发布的密码杂凑算法，广泛应�
 
 SM3算法的消息扩展涉及以下关键公式：
 
-1. \( W_{n} = P(HW_{n} \oplus W_{n} \cdot \text{ROTL32}(W_{n}, 15)) \oplus \text{ROTL32}(W_{n}, 7) \oplus W_{n} \)
-2. \( P(I_{n}) = \text{ROTL32}(I_{n}, 15) \oplus \text{ROTL32}(I_{n}, 23) \)
+1. $\( W_{n} = P(HW_{n} \oplus W_{n} \cdot \text{ROTL32}(W_{n}, 15)) \oplus \text{ROTL32}(W_{n}, 7) \oplus W_{n} \)$
+2. $\( P(I_{n}) = \text{ROTL32}(I_{n}, 15) \oplus \text{ROTL32}(I_{n}, 23) \)$
 
 在AVX512实现中，上述公式通过`vprold`和`vpxorq`指令并行化处理，显著降低计算延迟。
 

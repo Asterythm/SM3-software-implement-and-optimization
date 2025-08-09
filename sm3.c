@@ -1,6 +1,7 @@
 #include "sm3.h"
-#include <stdint.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // SM3 constants (Tj for j=0 to 63)
 static const uint32_t T[64] = {
@@ -60,6 +61,12 @@ void sm3_compress(uint32_t *state, const uint32_t *W) {
 void sm3_hash(const uint8_t *msg, uint64_t len, uint8_t *digest) {
     uint32_t state[8] = {0x7380166f, 0x4914b2b9, 0x172442d7, 0xda8a0600,
                          0xa96f30bc, 0x163138aa, 0xe38dee4d, 0xb0fb0e4e};
+    sm3_hash_with_state(msg, len, digest, state);
+}
+
+void sm3_hash_with_state(const uint8_t *msg, uint64_t len, uint8_t *digest, uint32_t *initial_state) {
+    uint32_t state[8];
+    memcpy(state, initial_state, 8 * sizeof(uint32_t));
     uint8_t buffer[SM3_BLOCK_SIZE];
     uint64_t total_len = len * 8;
     
@@ -95,4 +102,48 @@ void sm3_hash(const uint8_t *msg, uint64_t len, uint8_t *digest) {
         digest[4*i+2] = (state[i] >> 8) & 0xFF;
         digest[4*i+3] = state[i] & 0xFF;
     }
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <input_file> [--with-state]\n", argv[0]);
+        return 1;
+    }
+    
+    FILE *input = fopen(argv[1], "rb");
+    if (!input) {
+        fprintf(stderr, "Cannot open input file\n");
+        return 1;
+    }
+    
+    fseek(input, 0, SEEK_END);
+    long len = ftell(input);
+    fseek(input, 0, SEEK_SET);
+    
+    uint8_t *msg = malloc(len);
+    fread(msg, 1, len, input);
+    fclose(input);
+    
+    uint8_t digest[SM3_DIGEST_LENGTH];
+    if (argc > 2 && strcmp(argv[2], "--with-state") == 0) {
+        uint32_t state[8];
+        if (len < 32) {
+            fprintf(stderr, "State file too short\n");
+            free(msg);
+            return 1;
+        }
+        for (int i = 0; i < 8; i++) {
+            state[i] = (msg[4*i] << 24) | (msg[4*i+1] << 16) | (msg[4*i+2] << 8) | msg[4*i+3];
+        }
+        sm3_hash_with_state(msg + 32, len - 32, digest, state);
+    } else {
+        sm3_hash(msg, len, digest);
+    }
+    
+    FILE *output = fopen("output.bin", "wb");
+    fwrite(digest, 1, SM3_DIGEST_LENGTH, output);
+    fclose(output);
+    
+    free(msg);
+    return 0;
 }
